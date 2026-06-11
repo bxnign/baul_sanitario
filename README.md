@@ -37,42 +37,111 @@ app/
         └── repository/       # Implementaciones de repositorio
 ```
 
-## Plan de acción por fases
+## Plan de implementación
 
-### Fase 1 — Configuración inicial del proyecto
+### Fase 0 — Preparación del ambiente ✓ Completada
 
-1. Crear el proyecto Android en Android Studio con soporte para Kotlin y Jetpack Compose.
-2. Configurar el archivo `build.gradle` con todas las dependencias necesarias: Compose BOM, ML Kit Document Scanner, Supabase SDK (kotlinx-serialization, ktor-client-android, postgrest-kt, storage-kt), Coroutines y Room.
-3. Inicializar el cliente de Supabase en la aplicación con las variables de entorno (URL y anon key) gestionadas mediante un archivo `local.properties` excluido del repositorio.
-4. Crear la estructura de paquetes base siguiendo la arquitectura limpia descrita: `ui`, `domain` y `data` con sus subcarpetas.
-5. Verificar la compilación limpia del proyecto vacío antes de avanzar.
+Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria y sesiones con IA configurado.
 
-### Fase 2 — Captura y procesamiento local con ML Kit
+### Fase 1 — Creación del proyecto Android y configuración de dependencias
 
-1. Agregar el permiso de cámara en el `AndroidManifest.xml` y gestionar su solicitud en tiempo de ejecución.
-2. Implementar el lanzador de la Document Scanner API de ML Kit, configurando las opciones de escaneo (modo completo, límite de páginas, formato PDF).
-3. Crear el caso de uso `ScanDocumentUseCase` en la capa de dominio que encapsule la lógica de inicio del escáner y la recuperación del URI del PDF resultante.
-4. Crear la pantalla Compose de captura con el ViewModel correspondiente, integrando el lanzador del escáner y mostrando una vista previa del documento capturado.
-5. Implementar el manejo de errores para los estados de cancelación y fallo del escáner, propagándolos correctamente hasta la UI mediante StateFlow.
+1. Crear el proyecto en Android Studio: plantilla Empty Activity, lenguaje Kotlin, Compose habilitado, `minSdk 26`, `targetSdk 36`.
+2. Configurar `libs.versions.toml` con las versiones de Compose BOM, Kotlin, ML Kit Document Scanner, Supabase SDK, Ktor, Coroutines y Serialization.
+3. Aplicar el plugin `kotlin-serialization` en el `build.gradle.kts` raíz y en el del módulo `app`.
+4. Declarar todas las dependencias en el `build.gradle.kts` del módulo `app` usando el version catalog.
+5. Agregar `SUPABASE_URL` y `SUPABASE_ANON_KEY` en `local.properties` y exponerlos al código mediante `buildConfigField`.
+6. Habilitar `buildConfig = true` en el bloque `buildFeatures` del `build.gradle.kts`.
+7. Verificar compilación limpia antes de avanzar.
 
-### Fase 3 — Modelamiento de datos y subida a Supabase
+### Fase 2 — Estructura de paquetes y clase Application
 
-1. Diseñar el esquema relacional en Supabase: tabla `profiles` (id, name, created_at) y tabla `documents` (id, profile_id, type, file_path, file_name, created_at).
-2. Configurar el bucket de Supabase Storage con las políticas de acceso adecuadas para el usuario autenticado.
-3. Implementar `SupabaseStorageDataSource` en la capa de datos con la función de subida del PDF al path jerárquico `perfil_id/tipo_documento/archivo.pdf`.
-4. Implementar `SupabaseDatabaseDataSource` con las operaciones de inserción y consulta sobre las tablas `profiles` y `documents`.
-5. Implementar el repositorio `DocumentRepository` haciendo cumplir la consistencia transaccional: primero subir el archivo al Storage y solo si la subida es exitosa insertar el registro en la base de datos.
-6. Crear los casos de uso `UploadDocumentUseCase` y `GetDocumentsByProfileUseCase` en la capa de dominio.
+1. Crear la estructura de paquetes siguiendo la arquitectura limpia: `ui/screens`, `ui/components`, `ui/viewmodels`, `domain/model`, `domain/repository`, `domain/usecase`, `data/remote`, `data/local`, `data/repository`.
+2. Crear la clase `BaulSanitarioApp : Application()` vacía en el paquete raíz.
+3. Registrar `BaulSanitarioApp` en el `AndroidManifest.xml` mediante `android:name`.
+4. Crear el objeto `AppContainer` dentro de la Application para centralizar la creación manual de dependencias.
 
-### Fase 4 — Interfaz de usuario completa
+### Fase 3 — Modelos de dominio y contratos de repositorio
 
-1. Crear la pantalla principal con la lista de perfiles familiares (mamá y papá), navegando al listado de documentos de cada perfil al seleccionarlo.
-2. Crear la pantalla de listado de documentos por perfil, mostrando miniaturas o ítems con nombre, tipo y fecha de cada documento.
-3. Crear la pantalla de detalle del documento con un visor de PDF embebido o lanzador del visor del sistema.
-4. Integrar el flujo completo de captura desde la pantalla de listado: botón de nuevo documento → escáner ML Kit → selección de tipo → subida → confirmación visual.
-5. Implementar la navegación entre pantallas con Jetpack Navigation Compose.
-6. Pulir los estados de carga, error y vacío en todas las pantallas con feedback visual apropiado al usuario.
+1. Crear el enum `DocumentType` con los valores `RECIPE`, `EXAM`, `RECEIPT`, `ORDER` y su nombre legible en español asociado.
+2. Crear la entidad `Profile(id: String, name: String, createdAt: Instant)`.
+3. Crear la entidad `Document(id: String, profileId: String, type: DocumentType, filePath: String, fileName: String, createdAt: Instant)`.
+4. Crear la interfaz `ProfileRepository` en `domain/repository`: `suspend fun getProfiles(): Result<List<Profile>>`.
+5. Crear la interfaz `DocumentRepository` en `domain/repository`: `suspend fun getDocumentsByProfile(profileId: String): Result<List<Document>>` y `suspend fun uploadDocument(profileId: String, type: DocumentType, pdfUri: Uri): Result<Document>`.
+
+### Fase 4 — Backend Supabase (infraestructura en la nube)
+
+1. Crear el proyecto en el panel de Supabase y obtener la URL y la `anon key`.
+2. Crear la tabla `profiles`: `id uuid PRIMARY KEY DEFAULT gen_random_uuid()`, `name text NOT NULL`, `created_at timestamptz NOT NULL DEFAULT now()`.
+3. Crear la tabla `documents`: `id uuid PK`, `profile_id uuid NOT NULL REFERENCES profiles(id)`, `type text NOT NULL`, `file_path text NOT NULL`, `file_name text NOT NULL`, `created_at timestamptz NOT NULL DEFAULT now()`.
+4. Habilitar Row Level Security (RLS) en ambas tablas.
+5. Crear políticas RLS de lectura y escritura para el usuario autenticado en ambas tablas.
+6. Crear el bucket `medical-documents` como privado en Supabase Storage.
+7. Crear las políticas de acceso al bucket para el usuario autenticado (SELECT, INSERT, DELETE).
+8. Insertar los dos registros iniciales en `profiles`: `"Mamá"` y `"Papá"`.
+
+### Fase 5 — Cliente Supabase e inicialización
+
+1. Agregar el permiso `INTERNET` en `AndroidManifest.xml`.
+2. Crear `SupabaseClientProvider` en `data/remote`: instancia única del cliente usando `createSupabaseClient(url, key)` con los plugins `Postgrest`, `Storage` y `Auth` instalados.
+3. Inicializar el cliente en `BaulSanitarioApp` y almacenarlo en el `AppContainer`.
+4. Verificar conectividad con una lectura simple sobre la tabla `profiles` y loguear el resultado.
+
+### Fase 6 — Autenticación
+
+1. Crear la interfaz `AuthRepository` en `domain/repository`: `suspend fun login(email: String, password: String): Result<Unit>`, `suspend fun logout(): Result<Unit>`, `fun isLoggedIn(): Boolean`.
+2. Crear `SupabaseAuthDataSource` en `data/remote` usando el plugin `Auth` del cliente.
+3. Implementar `AuthRepositoryImpl` en `data/repository`.
+4. Crear los casos de uso `LoginUseCase` y `LogoutUseCase` en `domain/usecase`.
+5. Crear `AuthViewModel` con StateFlow de estados: `Idle`, `Loading`, `Success`, `Error(message: String)`.
+6. Crear `LoginScreen` en Compose: campos de email y contraseña, botón de ingreso, mensaje de error visible.
+7. Configurar la navegación raíz: al iniciar la app verificar si hay sesión activa → si existe navegar a `HomeScreen`; si no, a `LoginScreen`.
+
+### Fase 7 — Captura de documentos con ML Kit Document Scanner
+
+1. Declarar el permiso `CAMERA` en `AndroidManifest.xml`.
+2. Implementar la solicitud del permiso de cámara en tiempo de ejecución con `rememberLauncherForActivityResult(RequestPermission)`.
+3. Configurar `GmsDocumentScannerOptions`: modo `SCANNER_MODE_FULL`, formato `RESULT_FORMAT_PDF`.
+4. Crear el lanzador del escáner con `GmsDocumentScanning.getClient(options)` y `getStartScanIntent`.
+5. Crear el caso de uso `ScanDocumentUseCase` que encapsule la inicialización del scanner client y la extracción del URI del PDF del resultado.
+6. Crear `ScanDocumentViewModel` con StateFlow de estados: `Idle`, `RequestingPermission`, `Scanning`, `Success(pdfUri: Uri)`, `Error(message: String)`.
+7. Crear `ScanScreen` en Compose: botón de escaneo, gestión del permiso en pantalla y vista de preconfirmación del documento capturado.
+
+### Fase 8 — Capa de datos: implementaciones de Storage y base de datos
+
+1. Crear `ProfileDto` y `DocumentDto` en `data/remote` con anotaciones `@Serializable`.
+2. Crear las funciones de mapeo `ProfileDto.toDomain()` y `DocumentDto.toDomain()`.
+3. Implementar `SupabaseStorageDataSource`: función `uploadPdf(profileId, type, pdfUri)` que sube el PDF al path `profileId/type/uuid.pdf` y retorna el path almacenado.
+4. Implementar `SupabaseDatabaseDataSource`: funciones `getProfiles()`, `getDocumentsByProfile(profileId)`, `insertDocument(dto)`.
+5. Implementar `DocumentRepositoryImpl` con la lógica transaccional: llamar a `uploadPdf` → si exitoso, llamar a `insertDocument`; si falla la subida, retornar error sin tocar la base de datos.
+6. Implementar `ProfileRepositoryImpl`.
+7. Registrar ambas implementaciones en el `AppContainer`.
+8. Crear `UploadDocumentUseCase`, `GetDocumentsByProfileUseCase` y `GetProfilesUseCase` en `domain/usecase`.
+
+### Fase 9 — Navegación y pantallas principales
+
+1. Configurar `NavHost` con todas las rutas: `login`, `home`, `documentList/{profileId}`, `scan/{profileId}`, `documentDetail/{documentId}`.
+2. Crear `HomeViewModel` que consume `GetProfilesUseCase` y expone perfiles mediante StateFlow.
+3. Crear `HomeScreen`: lista de perfiles como cards, estados de carga y error.
+4. Crear `DocumentListViewModel` que consume `GetDocumentsByProfileUseCase` para el `profileId` recibido como parámetro de navegación.
+5. Crear `DocumentListScreen`: lista de documentos con nombre, tipo y fecha; botón flotante que navega a `ScanScreen`.
+6. Crear `DocumentDetailScreen`: abre el PDF con un `Intent` hacia el visor del sistema.
+
+### Fase 10 — Flujo completo de carga y pulido
+
+1. Integrar `ScanScreen` en el flujo: al obtener el URI del PDF mostrar un selector de `DocumentType` y el botón de confirmar.
+2. Crear `UploadDocumentViewModel` que consume `UploadDocumentUseCase` y expone los estados `Idle`, `Uploading`, `Success`, `Error`.
+3. Al finalizar la subida exitosa navegar de vuelta a `DocumentListScreen` y refrescar la lista.
+4. Verificar que todos los estados `Loading`, `Empty`, `Error` y `Content` estén implementados visualmente en todas las pantallas.
+5. Asegurar que la sesión expirada redirija automáticamente a `LoginScreen`.
+
+### Fase 11 — Pruebas en dispositivo y cierre
+
+1. Instalar la app en dispositivo físico Android.
+2. Probar el flujo completo: login → perfiles → seleccionar perfil → escanear → elegir tipo → confirmar → ver en lista → abrir.
+3. Probar el flujo de error: cortar internet durante la subida y verificar que no queden inconsistencias en la base de datos.
+4. Validar la apertura y visualización del PDF desde el visor del sistema.
+5. Ajustar cualquier comportamiento inesperado y cerrar la fase.
 
 ## Estado actual
 
-Fase 0 completada — Repositorio base limpio inicializado, estructura de carpetas de trabajo con IA configurada y plan de arquitectura técnica inicialmente definido. Listo para comenzar la implementación de la Fase 1.
+Fase 1 en progreso — pasos 1 al 6 completados. Proyecto Android `BaulSanitario` creado en Android Studio Quail 2026.1.1 con Kotlin y Jetpack Compose. Stack completo declarado en `libs.versions.toml` y `app/build.gradle.kts` (Supabase 3.3.0, Ktor 3.3.0, ML Kit Document Scanner 16.0.0, Coroutines 1.11.0, Navigation Compose 2.8.9). Pendiente: verificación de compilación limpia (paso 7 de Fase 1).
