@@ -1,2 +1,17 @@
 # Carpeta de trabajo con IA — documentación, sesiones y notas internas
 chat_ia/
+
+# Android
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+**/build/
+/captures
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
