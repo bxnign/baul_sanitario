@@ -79,7 +79,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 3. Registrar `BaulSanitarioApp` en el `AndroidManifest.xml` mediante `android:name`. ✓
 4. Crear el objeto `AppContainer` dentro de la Application para centralizar la creación manual de dependencias. ✓
 
-### Fase 3 — Modelos de dominio y contratos de repositorio
+### Fase 3 — Modelos de dominio y contratos de repositorio ✓ Completada
 
 1. Crear el enum `DocumentType` con los valores `RECIPE`, `EXAM`, `RECEIPT`, `ORDER` y su nombre legible en español asociado.
 2. Crear la entidad `Profile(id: String, name: String, createdAt: Instant)`.
@@ -87,7 +87,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 4. Crear la interfaz `ProfileRepository` en `domain/repository`: `suspend fun getProfiles(): Result<List<Profile>>`.
 5. Crear la interfaz `DocumentRepository` en `domain/repository`: `suspend fun getDocumentsByProfile(profileId: String): Result<List<Document>>` y `suspend fun uploadDocument(profileId: String, type: DocumentType, pdfUri: Uri): Result<Document>`.
 
-### Fase 4 — Backend Supabase (infraestructura en la nube)
+### Fase 4 — Backend Supabase (infraestructura en la nube) ✓ Completada
 
 1. Crear el proyecto en el panel de Supabase y obtener la URL y la `anon key`.
 2. Crear el schema `baul_sanitario` en Supabase para aislar las tablas del schema `public` por defecto. Todas las tablas del proyecto viven dentro de este schema.
@@ -101,14 +101,14 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 
 **Nota crítica de schema:** el plugin `Postgrest` del cliente Supabase en Android usa `public` como schema por defecto. Al inicializar el cliente en la Fase 5 se debe configurar `defaultSchema = "baul_sanitario"` explícitamente, de lo contrario todas las consultas fallarán con tabla no encontrada.
 
-### Fase 5 — Cliente Supabase e inicialización
+### Fase 5 — Cliente Supabase e inicialización ✓ Completada
 
 1. Agregar el permiso `INTERNET` en `AndroidManifest.xml`.
 2. Crear `SupabaseClientProvider` en `data/remote`: instancia única del cliente usando `createSupabaseClient(url, key)` con los plugins `Postgrest`, `Storage` y `Auth` instalados. El plugin `Postgrest` debe configurarse con `defaultSchema = "baul_sanitario"`.
 3. Inicializar el cliente en `BaulSanitarioApp` y almacenarlo en el `AppContainer`.
 4. Verificar conectividad con una lectura simple sobre la tabla `profiles` y loguear el resultado.
 
-### Fase 6 — Autenticación
+### Fase 6 — Autenticación ✓ Completada
 
 1. Crear la interfaz `AuthRepository` en `domain/repository`: `suspend fun login(email: String, password: String): Result<Unit>`, `suspend fun logout(): Result<Unit>`, `fun isLoggedIn(): Boolean`.
 2. Crear `SupabaseAuthDataSource` en `data/remote` usando el plugin `Auth` del cliente.
@@ -118,7 +118,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 6. Crear `LoginScreen` en Compose: campos de email y contraseña, botón de ingreso, mensaje de error visible.
 7. Configurar la navegación raíz: al iniciar la app verificar si hay sesión activa → si existe navegar a `HomeScreen`; si no, a `LoginScreen`.
 
-### Fase 7 — Captura de documentos con ML Kit Document Scanner
+### Fase 7 — Captura de documentos con ML Kit Document Scanner ✓ Completada
 
 1. Declarar el permiso `CAMERA` en `AndroidManifest.xml`.
 2. Implementar la solicitud del permiso de cámara en tiempo de ejecución con `rememberLauncherForActivityResult(RequestPermission)`.
@@ -128,7 +128,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 6. Crear `ScanDocumentViewModel` con StateFlow de estados: `Idle`, `RequestingPermission`, `Scanning`, `Success(pdfUri: Uri)`, `Error(message: String)`.
 7. Crear `ScanScreen` en Compose: botón de escaneo, gestión del permiso en pantalla y vista de preconfirmación del documento capturado.
 
-### Fase 8 — Capa de datos: implementaciones de Storage y base de datos
+### Fase 8 — Capa de datos: implementaciones de Storage y base de datos ✓ Completada
 
 1. Crear `ProfileDto` y `DocumentDto` en `data/remote` con anotaciones `@Serializable`.
 2. Crear las funciones de mapeo `ProfileDto.toDomain()` y `DocumentDto.toDomain()`.
@@ -139,7 +139,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 7. Registrar ambas implementaciones en el `AppContainer`.
 8. Crear `UploadDocumentUseCase`, `GetDocumentsByProfileUseCase` y `GetProfilesUseCase` en `domain/usecase`.
 
-### Fase 9 — Navegación y pantallas principales
+### Fase 9 — Navegación y pantallas principales ✓ Completada
 
 1. Configurar `NavHost` con todas las rutas: `login`, `home`, `documentList/{profileId}`, `scan/{profileId}`, `documentDetail/{documentId}`.
 2. Crear `HomeViewModel` que consume `GetProfilesUseCase` y expone perfiles mediante StateFlow.
@@ -148,7 +148,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 5. Crear `DocumentListScreen`: lista de documentos con nombre, tipo y fecha; botón flotante que navega a `ScanScreen`.
 6. Crear `DocumentDetailScreen`: abre el PDF con un `Intent` hacia el visor del sistema.
 
-### Fase 10 — Flujo completo de carga y pulido
+### Fase 10 — Flujo completo de carga y pulido ✓ Completada
 
 1. Integrar `ScanScreen` en el flujo: al obtener el URI del PDF mostrar un selector de `DocumentType` y el botón de confirmar.
 2. Crear `UploadDocumentViewModel` que consume `UploadDocumentUseCase` y expone los estados `Idle`, `Uploading`, `Success`, `Error`.
@@ -156,7 +156,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 4. Verificar que todos los estados `Loading`, `Empty`, `Error` y `Content` estén implementados visualmente en todas las pantallas.
 5. Asegurar que la sesión expirada redirija automáticamente a `LoginScreen`.
 
-### Fase 11 — Pruebas en dispositivo y cierre
+### Fase 11 — Pruebas en dispositivo y cierre ✓ Completada
 
 1. Instalar la app en dispositivo físico Android.
 2. Probar el flujo completo: login → perfiles → seleccionar perfil → escanear → elegir tipo → confirmar → ver en lista → abrir.
@@ -166,4 +166,12 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 
 ## Estado actual
 
-Fases 0 a 4 completadas. El proyecto Android compila limpio con el stack completo. La estructura de paquetes de Clean Architecture está en su lugar, los modelos de dominio y contratos de repositorio están definidos, y el backend de Supabase está completamente configurado: schema `baul_sanitario`, tablas `profiles` y `documents` con RLS activo, perfiles iniciales de Mamá y Papá cargados, bucket `medical-documents` privado con políticas de acceso para usuarios autenticados. Las credenciales de Supabase están configuradas en `local.properties` y expuestas al código vía `BuildConfig`. Próximo paso: Fase 5 — crear el cliente Supabase en Android y verificar conectividad.
+Fases 0 a 11 completadas y rediseño de interfaz aplicado. La app funciona de extremo a extremo en dispositivo físico (Samsung S23), instalándose por depuración inalámbrica. El backend Supabase quedó operativo tras exponer el schema `baul_sanitario` en la Data API, otorgar permisos al rol autenticado y ajustar las políticas RLS del bucket de Storage.
+
+Funcionalidad implementada: autenticación con Supabase Auth y **sesión persistente** (la app entra directo si ya hay sesión guardada); escaneo de documentos con ML Kit Document Scanner; carga transaccional de PDFs a Storage con metadatos en PostgreSQL; **nombre de documento personalizable** (el usuario lo elige o se genera `Tipo_fecha` por defecto, desacoplado del UUID físico del archivo); multiperfil con **creación de perfiles** desde la app y cambio mediante un bottom sheet estilo Instagram; búsqueda por nombre; **filtros** por tipo (multi-selección) y por fecha de subida; y visor de PDF vía URL firmada.
+
+## Diseño de interfaz
+
+La app usa un tema **oscuro único** (dark-only, sin tema claro ni colores dinámicos): fondo negro `#121212`, acento celeste `#00D2FF`, contenedores grises `#1E1E1E`/`#2A2A2A`, tipografía Inter. Flat design, sin neón ni degradados. La navegación se organiza con una barra inferior (Documentos, Buscar, Subir, avatar de perfil). La especificación completa de diseño vive en `chat_ia/documentacion_notas_ia/promt_diseño.txt`.
+
+Componentes reutilizables en `ui/components`: `PrimaryButton`, `AppTextField`, `SelectablePill`, `CategoryChip`, `DocumentCard`, `ProfileAvatar`, `BottomNavBar`. El shell principal es `MainScreen`, que reemplazó la antigua pantalla de selección de perfiles.
