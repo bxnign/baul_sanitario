@@ -175,3 +175,24 @@ Funcionalidad implementada: autenticación con Supabase Auth y **sesión persist
 La app usa un tema **oscuro único** (dark-only, sin tema claro ni colores dinámicos): fondo negro `#121212`, acento celeste `#00D2FF`, contenedores grises `#1E1E1E`/`#2A2A2A`, tipografía Inter. Flat design, sin neón ni degradados. La navegación se organiza con una barra inferior (Documentos, Buscar, Subir, avatar de perfil). La especificación completa de diseño vive en `chat_ia/documentacion_notas_ia/promt_diseño.txt`.
 
 Componentes reutilizables en `ui/components`: `PrimaryButton`, `AppTextField`, `SelectablePill`, `CategoryChip`, `DocumentCard`, `ProfileAvatar`, `BottomNavBar`. El shell principal es `MainScreen`, que reemplazó la antigua pantalla de selección de perfiles.
+
+## Mejoras futuras
+
+Ideas a evaluar una vez validada en uso real la versión preliminar actual. No están comprometidas todavía; se documentan aquí para no perderlas.
+
+### Integración con Google Drive
+
+Objetivo: que los documentos almacenados en Supabase Storage queden también accesibles desde el Google Drive de la cuenta del usuario. La meta es poder abrir, compartir e imprimir los documentos de forma independiente a la app —desde cualquier dispositivo con acceso al Drive—, de modo que la documentación médica familiar funcione como un portafolio accesible desde cualquier lado.
+
+Puntos a investigar en las fuentes oficiales (Google Drive API y SDK de Supabase) antes de implementar:
+
+- Autenticación OAuth con la cuenta de Google del usuario y los permisos (scopes) mínimos necesarios para escribir en su Drive.
+- Estrategia de sincronización: subir una copia del PDF a una carpeta dedicada en Drive en el mismo momento de la carga, o como un proceso de respaldo posterior.
+- Organización dentro de Drive replicando la jerarquía por perfil y tipo de documento (`perfil / tipo / archivo.pdf`).
+- Consistencia entre Storage y Drive: qué hacer si una de las dos subidas falla, para no dejar copias huérfanas en ninguno de los dos lados.
+
+### Pendientes técnicos
+
+- Persistir el perfil activo entre reinicios de la app (por ejemplo con DataStore); hoy se conserva solo mientras la app vive.
+- Eliminar `HomeScreen.kt` y `HomeViewModel.kt`, que quedaron huérfanos tras el rediseño del menú principal.
+- Publicación en Google Play (requiere keystore de firma y ficha en Google Play Console).
