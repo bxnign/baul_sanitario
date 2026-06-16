@@ -2,6 +2,7 @@ package com.baulsanitario.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.baulsanitario.data.local.ProfilePreferencesDataSource
 import com.baulsanitario.domain.model.Profile
 import com.baulsanitario.domain.usecase.CreateProfileUseCase
 import com.baulsanitario.domain.usecase.GetProfilesUseCase
@@ -26,7 +27,8 @@ sealed class ProfileSessionState {
  */
 class ProfileSessionViewModel(
     private val getProfilesUseCase: GetProfilesUseCase,
-    private val createProfileUseCase: CreateProfileUseCase
+    private val createProfileUseCase: CreateProfileUseCase,
+    private val profilePreferencesDataSource: ProfilePreferencesDataSource
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<ProfileSessionState>(ProfileSessionState.Loading)
@@ -44,7 +46,9 @@ class ProfileSessionViewModel(
                     _state.value = if (profiles.isEmpty()) {
                         ProfileSessionState.Error("No hay perfiles registrados")
                     } else {
-                        ProfileSessionState.Ready(profiles, profiles.first())
+                        val lastActiveId = profilePreferencesDataSource.getActiveProfileId()
+                        val activeProfile = profiles.firstOrNull { it.id == lastActiveId } ?: profiles.first()
+                        ProfileSessionState.Ready(profiles, activeProfile)
                     }
                 }
                 .onFailure {
@@ -58,6 +62,7 @@ class ProfileSessionViewModel(
         if (current is ProfileSessionState.Ready) {
             val target = current.profiles.firstOrNull { it.id == profileId } ?: return
             _state.value = current.copy(activeProfile = target)
+            viewModelScope.launch { profilePreferencesDataSource.setActiveProfileId(profileId) }
         }
     }
 
@@ -76,6 +81,7 @@ class ProfileSessionViewModel(
                 } else {
                     ProfileSessionState.Ready(listOf(newProfile), newProfile)
                 }
+                profilePreferencesDataSource.setActiveProfileId(newProfile.id)
             }
         }
     }

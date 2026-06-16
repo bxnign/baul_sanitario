@@ -3,6 +3,7 @@ package com.baulsanitario
 import android.app.Application
 import android.content.Context
 import android.util.Log
+import com.baulsanitario.data.local.ProfilePreferencesDataSource
 import com.baulsanitario.data.remote.SupabaseAuthDataSource
 import com.baulsanitario.data.remote.SupabaseClientProvider
 import com.baulsanitario.data.remote.SupabaseDatabaseDataSource
@@ -72,6 +73,8 @@ class AppContainer(
     private val databaseDataSource = SupabaseDatabaseDataSource(supabaseClient)
     private val profileRepository: ProfileRepository = ProfileRepositoryImpl(databaseDataSource)
     private val documentRepository: DocumentRepository = DocumentRepositoryImpl(storageDataSource, databaseDataSource)
+
+    val profilePreferencesDataSource = ProfilePreferencesDataSource(context)
 
     val getProfilesUseCase = GetProfilesUseCase(profileRepository)
     val createProfileUseCase = CreateProfileUseCase(profileRepository)

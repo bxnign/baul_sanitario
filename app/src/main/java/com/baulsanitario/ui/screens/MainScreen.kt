@@ -109,7 +109,11 @@ fun MainScreen(
     val activity = context as ComponentActivity
 
     val sessionViewModel: ProfileSessionViewModel = viewModel(viewModelStoreOwner = activity) {
-        ProfileSessionViewModel(app.container.getProfilesUseCase, app.container.createProfileUseCase)
+        ProfileSessionViewModel(
+            app.container.getProfilesUseCase,
+            app.container.createProfileUseCase,
+            app.container.profilePreferencesDataSource
+        )
     }
     val sessionState by sessionViewModel.state.collectAsStateWithLifecycle()
 
