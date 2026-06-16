@@ -4,7 +4,7 @@ Aplicación móvil Android de uso personal para la digitalización, clasificaci�
 
 ## Stack tecnológico
 
-El proyecto se desarrolla íntegramente en Kotlin con interfaz declarativa construida sobre Jetpack Compose. La captura y procesamiento de documentos se realiza de forma local mediante la Google ML Kit Document Scanner API, que entrega el resultado como PDF con apariencia real de documento escaneado. La persistencia remota se apoya en Supabase, utilizando su módulo de base de datos relacional (PostgreSQL) para el registro de metadatos y su módulo de Storage para el almacenamiento binario de los archivos. La comunicación asíncrona y el manejo de concurrencia se implementan con Kotlin Coroutines y Flow. Para las llamadas de red al cliente de Supabase se usa Ktor. Room se contempla como capa de caché local opcional para soporte offline.
+El proyecto se desarrolla íntegramente en Kotlin con interfaz declarativa construida sobre Jetpack Compose. La captura y procesamiento de documentos se realiza de forma local mediante la Google ML Kit Document Scanner API, que entrega el resultado como PDF con apariencia real de documento escaneado. La persistencia remota se apoya en Supabase, utilizando su módulo de base de datos relacional (PostgreSQL) para el registro de metadatos y su módulo de Storage para el almacenamiento binario de los archivos. La comunicación asíncrona y el manejo de concurrencia se implementan con Kotlin Coroutines y Flow. Para las llamadas de red al cliente de Supabase se usa Ktor. Room se contempla como capa de caché local opcional para soporte offline. Jetpack DataStore (Preferences) se usa para persistir preferencias locales del dispositivo, como el último perfil familiar activo.
 
 Versiones del stack:
 
@@ -18,6 +18,7 @@ Versiones del stack:
 - ML Kit Document Scanner 16.0.0
 - Navigation Compose 2.8.9
 - Lifecycle ViewModel Compose 2.8.7
+- DataStore Preferences 1.1.1
 - minSdk 26 / targetSdk 36
 
 ## Arquitectura
@@ -52,7 +53,7 @@ app/
     │   └── usecase/              # Casos de uso
     └── data/
         ├── remote/               # Cliente Supabase, DTOs y mappers
-        ├── local/                # Room database, DAOs (opcional)
+        ├── local/                # DataStore de preferencias; Room (opcional) a futuro
         └── repository/           # Implementaciones de repositorio
 ```
 
@@ -168,7 +169,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 
 Fases 0 a 11 completadas y rediseño de interfaz aplicado. La app funciona de extremo a extremo en dispositivo físico (Samsung S23), instalándose por depuración inalámbrica. El backend Supabase quedó operativo tras exponer el schema `baul_sanitario` en la Data API, otorgar permisos al rol autenticado y ajustar las políticas RLS del bucket de Storage.
 
-Funcionalidad implementada: autenticación con Supabase Auth y **sesión persistente** (la app entra directo si ya hay sesión guardada); escaneo de documentos con ML Kit Document Scanner; carga transaccional de PDFs a Storage con metadatos en PostgreSQL; **nombre de documento personalizable** (el usuario lo elige o se genera `Tipo_fecha` por defecto, desacoplado del UUID físico del archivo); multiperfil con **creación de perfiles** desde la app y cambio mediante un bottom sheet estilo Instagram; búsqueda por nombre; **filtros** por tipo (multi-selección) y por fecha de subida; y visor de PDF vía URL firmada.
+Funcionalidad implementada: autenticación con Supabase Auth y **sesión persistente** (la app entra directo si ya hay sesión guardada); escaneo de documentos con ML Kit Document Scanner; carga transaccional de PDFs a Storage con metadatos en PostgreSQL; **nombre de documento personalizable** (el usuario lo elige o se genera `Tipo_fecha` por defecto, desacoplado del UUID físico del archivo); multiperfil con **creación de perfiles** desde la app y cambio mediante un bottom sheet estilo Instagram; **perfil activo persistente** entre reinicios de la app vía DataStore (se reabre en el último perfil usado en vez de uno fijo por defecto); búsqueda por nombre; **filtros** por tipo (multi-selección) y por fecha de subida; cinco tipos de documento (Receta, Registro médico, Examen, Boleta, Orden médica); y visor de PDF vía URL firmada.
 
 ## Diseño de interfaz
 
@@ -191,8 +192,9 @@ Puntos a investigar en las fuentes oficiales (Google Drive API y SDK de Supabase
 - Organización dentro de Drive replicando la jerarquía por perfil y tipo de documento (`perfil / tipo / archivo.pdf`).
 - Consistencia entre Storage y Drive: qué hacer si una de las dos subidas falla, para no dejar copias huérfanas en ninguno de los dos lados.
 
+El diseño detallado de cómo resolver el punto de consistencia (subida a Drive desacoplada de la transacción crítica actual, columna `drive_file_id` nullable, aviso visual por documento sin copia y reintento manual) ya está definido en `chat_ia/documentacion_notas_ia/integracion_google_drive.txt`, pendiente de implementación.
+
 ### Pendientes técnicos
 
-- Persistir el perfil activo entre reinicios de la app (por ejemplo con DataStore); hoy se conserva solo mientras la app vive.
 - Eliminar `HomeScreen.kt` y `HomeViewModel.kt`, que quedaron huérfanos tras el rediseño del menú principal.
 - Publicación en Google Play (requiere keystore de firma y ficha en Google Play Console).
