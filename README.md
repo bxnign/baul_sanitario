@@ -192,7 +192,17 @@ Puntos a investigar en las fuentes oficiales (Google Drive API y SDK de Supabase
 - Organización dentro de Drive replicando la jerarquía por perfil y tipo de documento (`perfil / tipo / archivo.pdf`).
 - Consistencia entre Storage y Drive: qué hacer si una de las dos subidas falla, para no dejar copias huérfanas en ninguno de los dos lados.
 
-El diseño detallado de cómo resolver el punto de consistencia (subida a Drive desacoplada de la transacción crítica actual, columna `drive_file_id` nullable, aviso visual por documento sin copia y reintento manual) ya está definido en `chat_ia/documentacion_notas_ia/integracion_google_drive.txt`, pendiente de implementación.
+El diseño detallado de cómo resolver el punto de consistencia (subida a Drive desacoplada de la transacción crítica actual, columna `drive_file_id` nullable, aviso visual por documento sin copia y reintento manual) ya está definido en `chat_ia/documentacion_notas_ia/integracion_google_drive.txt`, pendiente de implementación. Queda para el futuro lejano, sin prioridad inmediata.
+
+### Calendario de consultas médicas y enlace con Google Calendar
+
+Objetivo: agregar dentro de la app un calendario o listado de próximas consultas médicas por perfil familiar, con la posibilidad de enlazar cada consulta con un evento en el Google Calendar del usuario.
+
+La parte local del calendario (entidad `Appointment` con perfil, fecha/hora, especialidad o motivo y notas; tabla `baul_sanitario.appointments` con el mismo esquema de RLS que `documents`; pantalla de listado/calendario) sigue el mismo patrón ya usado para documentos y no presenta riesgo nuevo.
+
+El enlace con Google Calendar es la parte de mayor riesgo: a diferencia de Drive, requiere un flujo OAuth de Google independiente de la sesión actual de Supabase Auth (Credential Manager / Google Identity Services), y el scope para crear eventos (`calendar.events`) es más sensible que `drive.file`. Antes de implementar hay que confirmar en la documentación oficial de Google Calendar API el nivel de verificación requerido para ese scope y cómo coexiste el token de Google con el de Supabase.
+
+Si se implementa, se aplicaría el mismo principio que en Drive: sincronización desacoplada de la transacción crítica (que sigue viviendo 100% en Supabase), columna `google_event_id` nullable, push unidireccional (la app crea/actualiza el evento en Calendar, sin traer cambios de vuelta) y reintento manual ante fallos. El análisis completo de esta sesión está documentado en `chat_ia/sesiones/24-06-2026.txt`.
 
 ### Pendientes técnicos
 
