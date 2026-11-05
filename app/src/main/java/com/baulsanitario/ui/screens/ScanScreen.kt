@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -174,6 +176,10 @@ fun ScanScreen(profileId: String, onUploadSuccess: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                // Con enableEdgeToEdge() el teclado ya no redimensiona la ventana:
+                // hay que consumir su inset para que el contenido se acomode sobre él.
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
                 .padding(horizontal = 24.dp)
         ) {
             when (val currentScanState = scanState) {

@@ -3,6 +3,7 @@ package com.baulsanitario
 import android.app.Application
 import android.content.Context
 import android.util.Log
+import com.baulsanitario.data.local.DownloadsDataSource
 import com.baulsanitario.data.local.ProfilePreferencesDataSource
 import com.baulsanitario.data.remote.SupabaseAuthDataSource
 import com.baulsanitario.data.remote.SupabaseClientProvider
@@ -15,6 +16,8 @@ import com.baulsanitario.domain.repository.AuthRepository
 import com.baulsanitario.domain.repository.DocumentRepository
 import com.baulsanitario.domain.repository.ProfileRepository
 import com.baulsanitario.domain.usecase.CreateProfileUseCase
+import com.baulsanitario.domain.usecase.DownloadDocumentUseCase
+import com.baulsanitario.domain.usecase.FindDownloadedDocumentUseCase
 import com.baulsanitario.domain.usecase.GetDocumentsByProfileUseCase
 import com.baulsanitario.domain.usecase.GetProfilesUseCase
 import com.baulsanitario.domain.usecase.LoginUseCase
@@ -72,7 +75,9 @@ class AppContainer(
     val storageDataSource = SupabaseStorageDataSource(supabaseClient, context)
     private val databaseDataSource = SupabaseDatabaseDataSource(supabaseClient)
     private val profileRepository: ProfileRepository = ProfileRepositoryImpl(databaseDataSource)
-    private val documentRepository: DocumentRepository = DocumentRepositoryImpl(storageDataSource, databaseDataSource)
+    private val downloadsDataSource = DownloadsDataSource(context)
+    private val documentRepository: DocumentRepository =
+        DocumentRepositoryImpl(storageDataSource, databaseDataSource, downloadsDataSource)
 
     val profilePreferencesDataSource = ProfilePreferencesDataSource(context)
 
@@ -80,4 +85,6 @@ class AppContainer(
     val createProfileUseCase = CreateProfileUseCase(profileRepository)
     val getDocumentsByProfileUseCase = GetDocumentsByProfileUseCase(documentRepository)
     val uploadDocumentUseCase = UploadDocumentUseCase(documentRepository)
+    val downloadDocumentUseCase = DownloadDocumentUseCase(documentRepository)
+    val findDownloadedDocumentUseCase = FindDownloadedDocumentUseCase(documentRepository)
 }

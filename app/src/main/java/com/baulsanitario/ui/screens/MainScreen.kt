@@ -1,5 +1,10 @@
 package com.baulsanitario.ui.screens
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -37,11 +42,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +77,8 @@ import com.baulsanitario.ui.components.PrimaryButton
 import com.baulsanitario.ui.components.ProfileAvatar
 import com.baulsanitario.ui.viewmodels.DocumentListState
 import com.baulsanitario.ui.viewmodels.DocumentListViewModel
+import com.baulsanitario.ui.viewmodels.DownloadDocumentViewModel
+import com.baulsanitario.ui.viewmodels.DownloadState
 import com.baulsanitario.ui.viewmodels.ProfileSessionState
 import com.baulsanitario.ui.viewmodels.ProfileSessionViewModel
 import java.time.Instant
@@ -158,8 +170,56 @@ private fun MainScaffold(
     }
     val docState by docListViewModel.state.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    val downloadViewModel: DownloadDocumentViewModel = viewModel {
+        DownloadDocumentViewModel(
+            app.container.downloadDocumentUseCase,
+            app.container.findDownloadedDocumentUseCase
+        )
+    }
+    val downloadState by downloadViewModel.state.collectAsStateWithLifecycle()
+    val downloadingId = (downloadState as? DownloadState.Downloading)?.documentId
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Informa el resultado de la descarga; en caso de éxito ofrece abrir el archivo.
+    LaunchedEffect(downloadState) {
+        when (val s = downloadState) {
+            is DownloadState.Success -> {
+                val result = snackbarHostState.showSnackbar(
+                    message = "\"${s.fileName}\" guardado en Descargas",
+                    actionLabel = "Abrir",
+                    duration = SnackbarDuration.Long
+                )
+                downloadViewModel.consumeResult()
+                if (result == SnackbarResult.ActionPerformed && !openPdf(context, s.uri)) {
+                    snackbarHostState.showSnackbar("No hay una aplicación para abrir PDFs")
+                }
+            }
+            is DownloadState.Error -> {
+                snackbarHostState.showSnackbar(s.message)
+                downloadViewModel.consumeResult()
+            }
+            else -> Unit
+        }
+    }
+
+    (downloadState as? DownloadState.AlreadyExists)?.let { existing ->
+        AlreadyDownloadedDialog(
+            fileName = existing.document.fileName,
+            onOpenExisting = {
+                downloadViewModel.dismissExisting()
+                if (!openPdf(context, existing.existingUri)) {
+                    Toast.makeText(context, "No hay una aplicación para abrir PDFs", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onDownloadAgain = { downloadViewModel.download(existing.document) },
+            onCancel = { downloadViewModel.dismissExisting() }
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             BottomNavBar(
                 currentTab = currentTab,
@@ -194,11 +254,15 @@ private fun MainScaffold(
                     onSelectAll = { filter = filter.copy(types = emptySet()) },
                     onOpenFilter = { showFilterSheet = true },
                     onRetry = { docListViewModel.loadDocuments() },
-                    onDocumentSelected = onDocumentSelected
+                    onDocumentSelected = onDocumentSelected,
+                    onDownload = { downloadViewModel.requestDownload(it) },
+                    downloadingId = downloadingId
                 )
                 MainTab.SEARCH -> SearchContent(
                     docState = docState,
-                    onDocumentSelected = onDocumentSelected
+                    onDocumentSelected = onDocumentSelected,
+                    onDownload = { downloadViewModel.requestDownload(it) },
+                    downloadingId = downloadingId
                 )
             }
         }
@@ -250,7 +314,9 @@ private fun DocumentsContent(
     onSelectAll: () -> Unit,
     onOpenFilter: () -> Unit,
     onRetry: () -> Unit,
-    onDocumentSelected: (String) -> Unit
+    onDocumentSelected: (String) -> Unit,
+    onDownload: (Document) -> Unit,
+    downloadingId: String?
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Encabezado con el título y el botón de filtro (embudo)
@@ -327,7 +393,9 @@ private fun DocumentsContent(
                                 fileName = document.fileName,
                                 typeName = document.type.displayName,
                                 date = formatDate(document),
-                                onClick = { onDocumentSelected(document.filePath) }
+                                onClick = { onDocumentSelected(document.filePath) },
+                                onDownload = { onDownload(document) },
+                                isDownloading = downloadingId == document.id
                             )
                         }
                     }
@@ -340,7 +408,9 @@ private fun DocumentsContent(
 @Composable
 private fun SearchContent(
     docState: DocumentListState,
-    onDocumentSelected: (String) -> Unit
+    onDocumentSelected: (String) -> Unit,
+    onDownload: (Document) -> Unit,
+    downloadingId: String?
 ) {
     var query by remember { mutableStateOf("") }
 
@@ -390,7 +460,9 @@ private fun SearchContent(
                         fileName = document.fileName,
                         typeName = document.type.displayName,
                         date = formatDate(document),
-                        onClick = { onDocumentSelected(document.filePath) }
+                        onClick = { onDocumentSelected(document.filePath) },
+                        onDownload = { onDownload(document) },
+                        isDownloading = downloadingId == document.id
                     )
                 }
             }
@@ -716,6 +788,61 @@ private fun AddProfileDialog(
                     text = "Cancelar",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    )
+}
+
+/** Abre un PDF con el visor del sistema. Retorna false si no hay ninguna app que pueda abrirlo. */
+private fun openPdf(context: Context, uri: Uri): Boolean {
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/pdf")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    return try {
+        context.startActivity(intent)
+        true
+    } catch (e: ActivityNotFoundException) {
+        false
+    }
+}
+
+@Composable
+private fun AlreadyDownloadedDialog(
+    fileName: String,
+    onOpenExisting: () -> Unit,
+    onDownloadAgain: () -> Unit,
+    onCancel: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                text = "Ya descargaste este documento",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            Text(
+                text = "\"$fileName\" ya está en tu carpeta Descargas. ¿Qué quieres hacer?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        // Tres acciones apiladas: el slot de confirmación admite cualquier contenido.
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = onOpenExisting) {
+                    Text("Abrir el existente", color = MaterialTheme.colorScheme.primary)
+                }
+                TextButton(onClick = onDownloadAgain) {
+                    Text("Descargar otra copia", color = MaterialTheme.colorScheme.primary)
+                }
+                TextButton(onClick = onCancel) {
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     )

@@ -3,6 +3,7 @@ package com.baulsanitario.data.remote
 import com.baulsanitario.domain.model.Document
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Order
 
 class SupabaseDatabaseDataSource(private val client: SupabaseClient) {
 
@@ -21,6 +22,8 @@ class SupabaseDatabaseDataSource(private val client: SupabaseClient) {
             filter {
                 eq("profile_id", profileId)
             }
+            // Más recientes primero.
+            order("created_at", Order.DESCENDING)
         }.decodeList()
     }
 

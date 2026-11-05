@@ -53,7 +53,7 @@ app/
     │   └── usecase/              # Casos de uso
     └── data/
         ├── remote/               # Cliente Supabase, DTOs y mappers
-        ├── local/                # DataStore de preferencias; Room (opcional) a futuro
+        ├── local/                # DataStore de preferencias; DownloadsDataSource (MediaStore); Room (opcional) a futuro
         └── repository/           # Implementaciones de repositorio
 ```
 
@@ -169,7 +169,7 @@ Repositorio Git inicializado, README.md y .gitignore creados, sistema de memoria
 
 Fases 0 a 11 completadas y rediseño de interfaz aplicado. La app funciona de extremo a extremo en dispositivo físico (Samsung S23), instalándose por depuración inalámbrica. El backend Supabase quedó operativo tras exponer el schema `baul_sanitario` en la Data API, otorgar permisos al rol autenticado y ajustar las políticas RLS del bucket de Storage.
 
-Funcionalidad implementada: autenticación con Supabase Auth y **sesión persistente** (la app entra directo si ya hay sesión guardada); escaneo de documentos con ML Kit Document Scanner; carga transaccional de PDFs a Storage con metadatos en PostgreSQL; **nombre de documento personalizable** (el usuario lo elige o se genera `Tipo_fecha` por defecto, desacoplado del UUID físico del archivo); multiperfil con **creación de perfiles** desde la app y cambio mediante un bottom sheet estilo Instagram; **perfil activo persistente** entre reinicios de la app vía DataStore (se reabre en el último perfil usado en vez de uno fijo por defecto); búsqueda por nombre; **filtros** por tipo (multi-selección) y por fecha de subida; cinco tipos de documento (Receta, Registro médico, Examen, Boleta, Orden médica); y visor de PDF vía URL firmada.
+Funcionalidad implementada: autenticación con Supabase Auth y **sesión persistente** (la app entra directo si ya hay sesión guardada); escaneo de documentos con ML Kit Document Scanner; carga transaccional de PDFs a Storage con metadatos en PostgreSQL; **nombre de documento personalizable** (el usuario lo elige o se genera `Tipo_fecha` por defecto, desacoplado del UUID físico del archivo); multiperfil con **creación de perfiles** desde la app y cambio mediante un bottom sheet estilo Instagram; **perfil activo persistente** entre reinicios de la app vía DataStore (se reabre en el último perfil usado en vez de uno fijo por defecto); búsqueda por nombre; **filtros** por tipo (multi-selección) y por fecha de subida; cinco tipos de documento (Receta, Registro médico, Examen, Boleta, Orden médica); y visor de PDF vía URL firmada. Además, los documentos se listan del **más reciente al más antiguo** (orden aplicado en la consulta a Supabase) y se pueden **descargar en PDF** a la carpeta Descargas del dispositivo mediante un ícono en cada tarjeta: al terminar la descarga se ofrece abrir el archivo, y si el documento ya fue descargado antes se pregunta si abrir el existente, descargar otra copia o cancelar. La descarga usa `MediaStore.Downloads` (sin permisos desde Android 10; en Android 8 y 9 no está disponible). La pantalla de subida respeta el teclado con `imePadding()`, de modo que el campo de nombre no queda tapado.
 
 ## Diseño de interfaz
 
@@ -206,5 +206,5 @@ Si se implementa, se aplicaría el mismo principio que en Drive: sincronización
 
 ### Pendientes técnicos
 
-- Eliminar `HomeScreen.kt` y `HomeViewModel.kt`, que quedaron huérfanos tras el rediseño del menú principal.
+- Descarga de documentos en Android 8 y 9 (`minSdk` 26): requeriría el permiso `WRITE_EXTERNAL_STORAGE`; hoy muestra un mensaje indicando que se necesita Android 10 o superior.
 - Publicación en Google Play (requiere keystore de firma y ficha en Google Play Console).

@@ -17,6 +17,11 @@ class SupabaseStorageDataSource(
         client.storage.from("medical-documents").createSignedUrl(filePath, 3600.seconds)
     }
 
+    /** Descarga los bytes del archivo desde el bucket privado usando la sesión autenticada. */
+    suspend fun downloadPdf(filePath: String): Result<ByteArray> = runCatching {
+        client.storage.from("medical-documents").downloadAuthenticated(filePath)
+    }
+
     suspend fun uploadPdf(profileId: String, type: DocumentType, pdfUri: Uri): Result<String> = runCatching {
         val bytes = context.contentResolver.openInputStream(pdfUri)?.use { it.readBytes() }
             ?: throw IOException("No se pudo leer el archivo PDF")

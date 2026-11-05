@@ -12,4 +12,10 @@ interface DocumentRepository {
         pdfUri: Uri,
         fileName: String
     ): Result<Document>
+
+    /** Descarga el PDF del documento a Descargas y retorna el Uri del archivo guardado. */
+    suspend fun downloadDocument(document: Document): Result<Uri>
+
+    /** Retorna el Uri de una descarga previa de este documento, o null si no existe. */
+    suspend fun findDownloadedDocument(document: Document): Uri?
 }
